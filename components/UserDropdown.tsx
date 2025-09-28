@@ -28,7 +28,7 @@ const UserDropdown = () => {
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
-          className="flex items-center gap-3 text-gray-4 hover:yellow-500"
+          className="flex items-center gap-3 text-gray-400 hover:yellow-500"
         >
           <Avatar className="h-8 w-8">
             <AvatarImage src="https://aditya-portfolio-gold.vercel.app/assets/logo-5d95862e.svg" />
