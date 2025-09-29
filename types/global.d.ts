@@ -147,6 +147,14 @@ declare global {
     changeFormatted?: string;
     marketCap?: string;
     peRatio?: string;
+    isFavorite?: boolean;
+  };
+
+  type WatchlistPageResult = {
+    items: StockWithData[];
+    total: number;
+    page: number;
+    pageSize: number;
   };
 
   type AlertsListProps = {
@@ -221,6 +229,22 @@ declare global {
     id: string;
     email: string;
     name: string;
+  };
+
+  type FinnhubCompanyProfile = {
+    country?: string;
+    currency?: string;
+    exchange?: string;
+    ipo?: string; // IPO date
+    marketCapitalization?: number;
+    name?: string; // Company name
+    phone?: string;
+    shareOutstanding?: number;
+    ticker?: string; // Symbol
+    weburl?: string;
+    logo?: string;
+    finnhubIndustry?: string;
+    [key: string]: any; // Allow passthrough of any other fields Finnhub may return
   };
 }
 

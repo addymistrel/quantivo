@@ -1,5 +1,7 @@
 import TradingViewWidget from "@/components/TradingViewWidget";
 import WatchlistButton from "@/components/WatchListButton";
+import { getCompanyDataFromSymol } from "@/lib/actions/finnhub.actions";
+import { isSymbolInWatchlist } from "@/lib/actions/watchlist.actions";
 import {
   SYMBOL_INFO_WIDGET_CONFIG,
   CANDLE_CHART_WIDGET_CONFIG,
@@ -11,13 +13,14 @@ import {
 
 export default async function StockDetails({ params }: StockDetailsPageProps) {
   const { symbol } = await params;
+  const isInWatchlist = await isSymbolInWatchlist(symbol);
   const scriptUrl = `https://s3.tradingview.com/external-embedding/embed-widget-`;
+  const companyDetails = await getCompanyDataFromSymol(symbol);
 
   return (
     <div className="flex min-h-screen p-4 md:p-6 lg:p-8">
-      <section className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full">
-        {/* Left column */}
-        <div className="flex flex-col gap-6">
+      <section className="grid w-full gap-8 home-section">
+        <div className="md:col-span-1 xl:col-span-2 flex flex-col gap-8">
           <TradingViewWidget
             scriptUrl={`${scriptUrl}symbol-info.js`}
             config={SYMBOL_INFO_WIDGET_CONFIG(symbol)}
@@ -40,12 +43,12 @@ export default async function StockDetails({ params }: StockDetailsPageProps) {
         </div>
 
         {/* Right column */}
-        <div className="flex flex-col gap-6">
+        <div className="md:col-span-1 xl:col-span-1 flex flex-col gap-y-8">
           <div className="flex items-center justify-between">
             <WatchlistButton
               symbol={symbol.toUpperCase()}
-              company={symbol.toUpperCase()}
-              isInWatchlist={false}
+              company={companyDetails?.name ?? ""}
+              isInWatchlist={isInWatchlist}
             />
           </div>
 
@@ -56,7 +59,7 @@ export default async function StockDetails({ params }: StockDetailsPageProps) {
           />
 
           <TradingViewWidget
-            scriptUrl={`${scriptUrl}company-profile.js`}
+            scriptUrl={`${scriptUrl}symbol-profile.js`}
             config={COMPANY_PROFILE_WIDGET_CONFIG(symbol)}
             height={440}
           />

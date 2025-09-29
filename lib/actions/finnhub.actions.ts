@@ -202,3 +202,40 @@ export const searchStocks = cache(
     }
   }
 );
+
+/**
+ * Fetch company profile (profile2) for a given stock symbol from Finnhub.
+ * Will return null if symbol is missing/empty or an error occurs.
+ * Revalidated every 1 hour (3600s) by default to avoid excess API calls.
+ */
+export async function getCompanyDataFromSymol(
+  symbol: string,
+  revalidateSeconds: number = 3600
+): Promise<FinnhubCompanyProfile | null> {
+  try {
+    const trimmed = (symbol || "").trim().toUpperCase();
+    if (!trimmed) return null;
+
+    const token = process.env.FINNHUB_API_KEY ?? NEXT_PUBLIC_FINNHUB_API_KEY;
+    if (!token) {
+      console.error(
+        "getCompanyDataFromSymol error:",
+        new Error("FINNHUB API key is not configured")
+      );
+      return null;
+    }
+
+    const url = `${FINNHUB_BASE_URL}/stock/profile2?symbol=${encodeURIComponent(
+      trimmed
+    )}&token=${token}`;
+
+    const data = await fetchJSON<FinnhubCompanyProfile>(url, revalidateSeconds);
+
+    // Finnhub returns empty object {} for unknown symbols; normalize to null
+    if (!data || Object.keys(data).length === 0) return null;
+    return data;
+  } catch (err) {
+    console.error("getCompanyDataFromSymol error:", err);
+    return null;
+  }
+}
