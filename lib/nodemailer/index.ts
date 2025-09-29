@@ -1,5 +1,8 @@
-import { WELCOME_EMAIL_TEMPLATE } from "@/lib/nodemailer/templates";
 import nodemailer from "nodemailer";
+import {
+  WELCOME_EMAIL_TEMPLATE,
+  NEWS_SUMMARY_EMAIL_TEMPLATE,
+} from "@/lib/nodemailer/templates";
 
 export const transporter = nodemailer.createTransport({
   service: "gmail",
@@ -20,10 +23,35 @@ export const sendWelcomeEmail = async ({
   );
 
   const mailOptions = {
-    from: `"Quantivo" <quantivo@contact.pro`,
+    from: `"Quantivo" <Quantivo@contact.in>`,
     to: email,
     subject: `Welcome to Quantivo - your stock market toolkit is ready!`,
     text: "Thanks for joining Quantivo",
+    html: htmlTemplate,
+  };
+
+  await transporter.sendMail(mailOptions);
+};
+
+export const sendNewsSummaryEmail = async ({
+  email,
+  date,
+  newsContent,
+}: {
+  email: string;
+  date: string;
+  newsContent: string;
+}): Promise<void> => {
+  const htmlTemplate = NEWS_SUMMARY_EMAIL_TEMPLATE.replace(
+    "{{date}}",
+    date
+  ).replace("{{newsContent}}", newsContent);
+
+  const mailOptions = {
+    from: `"Quantivo News" <Quantivo@jsmastery.pro>`,
+    to: email,
+    subject: `📈 Market News Summary Today - ${date}`,
+    text: `Today's market news summary from Quantivo`,
     html: htmlTemplate,
   };
 
