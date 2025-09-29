@@ -182,7 +182,7 @@ export const searchStocks = cache(
           const exchangeFromProfile = (r as any).__exchange as
             | string
             | undefined;
-          const exchange = exchangeFromProfile || exchangeFromDisplay || "US";
+          const exchange = exchangeFromDisplay || exchangeFromProfile || "US";
           const type = r.type || "Stock";
           const item: StockWithWatchlistStatus = {
             symbol: upper,
