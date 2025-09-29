@@ -9,6 +9,19 @@ import { getWatchlistSymbolsByEmail } from "@/lib/actions/watchlist.actions";
 import { getNews } from "@/lib/actions/finnhub.actions";
 import { getFormattedTodayDate } from "@/lib/utils";
 
+// Helper function to mask email addresses for logging
+const maskEmail = (email: string): string => {
+  const [localPart, domain] = email.split("@");
+  if (!domain) return "***@***";
+  const maskedLocal =
+    localPart.length <= 2
+      ? "***"
+      : localPart[0] +
+        "*".repeat(localPart.length - 2) +
+        localPart[localPart.length - 1];
+  return `${maskedLocal}@${domain}`;
+};
+
 export const sendSignUpEmail = inngest.createFunction(
   { id: "sign-up-email" },
   { event: "app/user.created" },
@@ -86,7 +99,11 @@ export const sendDailyNewsSummary = inngest.createFunction(
           }
           perUser.push({ user, articles });
         } catch (e) {
-          console.error("daily-news: error preparing user news", user.email, e);
+          console.error(
+            "daily-news: error preparing user news",
+            maskEmail(user.email),
+            e
+          );
           perUser.push({ user, articles: [] });
         }
       }
