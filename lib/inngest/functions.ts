@@ -123,16 +123,25 @@ export const sendDailyNewsSummary = inngest.createFunction(
           JSON.stringify(articles, null, 2)
         );
 
-        const response = await step.ai.infer(`summarize-news-${user.email}`, {
+        // Use a non-PII step ID by stripping/limiting the email
+        const safeId = `summarize-news-${(user.email || "")
+          .toLowerCase()
+          .replace(/[^a-z0-9]/g, "")
+          .slice(0, 16)}`;
+        const response = await step.ai.infer(safeId, {
           model: step.ai.models.gemini({ model: "gemini-2.5-flash" }),
           body: {
             contents: [{ role: "user", parts: [{ text: prompt }] }],
           },
         });
 
+        // Ensure we get HTML-formatted content or fall back to minimal HTML
         const part = response.candidates?.[0]?.content?.parts?.[0];
+        const raw = part && "text" in part ? part.text : null;
         const newsContent =
-          (part && "text" in part ? part.text : null) || "No market news.";
+          raw && /<\w+/.test(raw)
+            ? raw
+            : `<p class="mobile-text dark-text-secondary" style="margin:0 0 20px 0; font-size:16px; line-height:1.6; color:#CCDADC;">No market news today.</p>`;
 
         userNewsSummaries.push({ user, newsContent });
       } catch (e) {
