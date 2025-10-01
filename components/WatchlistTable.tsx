@@ -14,6 +14,9 @@ import {
   ChevronRight,
   RefreshCw,
   BellPlus,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import {
   Table,
@@ -26,6 +29,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import AlertDialog from "@/components/AddAlertDialog";
 
 type FilterType = "all" | "gainers" | "losers" | "favorites";
 
@@ -71,6 +75,7 @@ export default function WatchlistTable({
         if (override?.filter ?? filter)
           params.set("filter", override?.filter ?? filter);
         params.set("sort", sort);
+
         const res = await fetch(`/api/watchlist?${params.toString()}`, {
           cache: "no-store",
         });
@@ -187,13 +192,71 @@ export default function WatchlistTable({
     setPage((p) => Math.min(totalPages, Math.max(1, p + dir)));
   };
 
+  const handleManualRefresh = async () => {
+    try {
+      setLoading(true);
+      await fetchData();
+      toast.success("Watchlist refreshed successfully");
+    } catch (error) {
+      toast.error("Failed to refresh watchlist");
+    }
+  };
+
+  // Column sorting functionality
+  const handleSort = (column: string) => {
+    const [currentField, currentDir] = sort.split(":");
+    let newSort: string;
+
+    if (currentField === column) {
+      // Toggle direction if clicking same column
+      newSort = currentDir === "asc" ? `${column}:desc` : `${column}:asc`;
+    } else {
+      // Default to desc for most columns, asc for company/symbol
+      const defaultDir = ["company", "symbol"].includes(column)
+        ? "asc"
+        : "desc";
+      newSort = `${column}:${defaultDir}`;
+    }
+
+    setSort(newSort);
+    setPage(1); // Reset to first page when sorting
+  };
+
+  const getSortIcon = (column: string) => {
+    const [currentField, currentDir] = sort.split(":");
+    if (currentField !== column) {
+      return <ArrowUpDown size={14} className="opacity-50" />;
+    }
+    return currentDir === "asc" ? (
+      <ArrowUp size={14} className="text-blue-400" />
+    ) : (
+      <ArrowDown size={14} className="text-blue-400" />
+    );
+  };
+
+  const getSortableColumns = () => ({
+    company: "company",
+    symbol: "symbol",
+    currentPrice: "currentPrice",
+    changePercent: "changePercent",
+    marketCap: "marketCap",
+    peRatio: "peRatio",
+  });
+
   return (
-    <div className="w-full text-white p-6 rounded-lg">
+    <div className="w-full text-white rounded-lg">
       <div className="mb-6 flex items-center justify-between gap-4 flex-wrap">
-        <h1 className="font-semibold text-2xl text-gray-100">Watchlist</h1>
+        <h1 className="watchlist-title">Watchlist</h1>
         <div className="flex items-center gap-2 text-sm text-gray-400">
-          <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
-          <span>{loading ? "Refreshing..." : `Total ${total}`}</span>
+          <button
+            onClick={handleManualRefresh}
+            disabled={loading}
+            className="flex items-center gap-2 px-3 py-1 rounded-md hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+            title="Refresh watchlist data"
+          >
+            <RefreshCw size={16} className={loading ? "animate-spin" : ""} />
+            <span>{loading ? "Refreshing..." : `Total ${total}`}</span>
+          </button>
         </div>
       </div>
 
@@ -286,17 +349,65 @@ export default function WatchlistTable({
         </div>
       </div>
 
-      <div className="overflow-auto max-h-[700px] rounded-lg scrollbar-hide-default border border-gray-800">
+      <div className="overflow-auto max-h-[700px] rounded-lg scrollbar-hide-default">
         <Table className="watchlist-table">
           <TableHeader className="table-header sticky top-0 bg-gray-950/80 backdrop-blur z-10">
             <TableRow className="border-gray-800 hover:bg-transparent table-header-row">
               <TableHead className="w-12"></TableHead>
-              <TableHead className="text-gray-400">Company</TableHead>
-              <TableHead className="text-gray-400">Symbol</TableHead>
-              <TableHead className="text-gray-400">Price</TableHead>
-              <TableHead className="text-gray-400">Change</TableHead>
-              <TableHead className="text-gray-400">Market Cap</TableHead>
-              <TableHead className="text-gray-400">P/E Ratio</TableHead>
+              <TableHead
+                className="text-gray-400 cursor-pointer hover:text-gray-300 transition-colors"
+                onClick={() => handleSort("company")}
+              >
+                <div className="flex items-center gap-2">
+                  Company
+                  {getSortIcon("company")}
+                </div>
+              </TableHead>
+              <TableHead
+                className="text-gray-400 cursor-pointer hover:text-gray-300 transition-colors"
+                onClick={() => handleSort("symbol")}
+              >
+                <div className="flex items-center gap-2">
+                  Symbol
+                  {getSortIcon("symbol")}
+                </div>
+              </TableHead>
+              <TableHead
+                className="text-gray-400 cursor-pointer hover:text-gray-300 transition-colors"
+                onClick={() => handleSort("currentPrice")}
+              >
+                <div className="flex items-center gap-2">
+                  Price
+                  {getSortIcon("currentPrice")}
+                </div>
+              </TableHead>
+              <TableHead
+                className="text-gray-400 cursor-pointer hover:text-gray-300 transition-colors"
+                onClick={() => handleSort("changePercent")}
+              >
+                <div className="flex items-center gap-2">
+                  Change
+                  {getSortIcon("changePercent")}
+                </div>
+              </TableHead>
+              <TableHead
+                className="text-gray-400 cursor-pointer hover:text-gray-300 transition-colors"
+                onClick={() => handleSort("marketCap")}
+              >
+                <div className="flex items-center gap-2">
+                  Market Cap
+                  {getSortIcon("marketCap")}
+                </div>
+              </TableHead>
+              <TableHead
+                className="text-gray-400 cursor-pointer hover:text-gray-300 transition-colors"
+                onClick={() => handleSort("peRatio")}
+              >
+                <div className="flex items-center gap-2">
+                  P/E Ratio
+                  {getSortIcon("peRatio")}
+                </div>
+              </TableHead>
               <TableHead className="text-gray-400">Alert</TableHead>
             </TableRow>
           </TableHeader>
@@ -361,13 +472,10 @@ export default function WatchlistTable({
                     {item.peRatio || "-"}
                   </TableCell>
                   <TableCell className="table-cell">
-                    <Button
-                      onClick={() => handleAddAlert(item)}
-                      variant="ghost"
-                      className="bg-orange-900/30 hover:bg-orange-900/50 text-orange-500 h-8 px-4"
-                    >
-                      <BellPlus size={14} className="mr-1" /> Alert
-                    </Button>
+                    <AlertDialog
+                      companySymbol={item.symbol}
+                      companyName={item.company}
+                    />
                   </TableCell>
                 </TableRow>
               );

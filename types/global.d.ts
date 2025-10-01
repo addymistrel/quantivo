@@ -246,6 +246,30 @@ declare global {
     finnhubIndustry?: string;
     [key: string]: any; // Allow passthrough of any other fields Finnhub may return
   };
+
+  type GetWatchlistPageParams = {
+    page?: number; // 1-based
+    pageSize?: number;
+    search?: string; // search by symbol/company
+    filter?: "all" | "gainers" | "losers" | "favorites";
+    sort?: string; // e.g. "symbol:asc" or "addedAt:desc"
+  };
+
+  type WatchlistPageResult = {
+    items: StockWithData[];
+    total: number;
+    page: number;
+    pageSize: number;
+  };
+
+  type AddAlertFormData = {
+    alertName: string;
+    stockIdentifier: string;
+    alertType: string;
+    condition: string;
+    thresholdValue: number | null;
+    frequency: string | null;
+  };
 }
 
 export {};

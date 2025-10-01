@@ -132,6 +132,22 @@ export interface WatchlistPageResult {
   pageSize: number;
 }
 
+// Helper function to parse market cap string back to number for sorting
+function parseMarketCapToNumber(marketCapStr?: string): number {
+  if (!marketCapStr) return 0;
+
+  const numStr = marketCapStr.replace(/[$,B,M]/g, "");
+  const num = parseFloat(numStr);
+
+  if (marketCapStr.includes("B")) {
+    return num * 1000; // Convert billions to millions for comparison
+  } else if (marketCapStr.includes("M")) {
+    return num;
+  }
+
+  return num;
+}
+
 // Helper to fetch quote + metrics for multiple symbols in parallel (basic)
 async function fetchQuoteForSymbol(symbol: string) {
   const token =
@@ -161,10 +177,40 @@ async function fetchMetricsForSymbol(symbol: string) {
     "";
   if (!token) return { marketCap: undefined, peRatio: undefined };
   try {
+    // Fetch both profile and basic financials
     const profile = await getCompanyDataFromSymol(symbol, 3600); // cached 1h
-    const marketCap = profile?.marketCapitalization;
-    // Finnhub returns peBasicExclExtraTTM or similar metrics via /stock/metric endpoint; skip for now for rate limiting
-    return { marketCap, peRatio: undefined };
+    const marketCapRaw = profile?.marketCapitalization;
+
+    // Fetch basic financials for P/E ratio
+    let peRatio: number | undefined = undefined;
+    try {
+      const metricsUrl = `https://finnhub.io/api/v1/stock/metric?symbol=${encodeURIComponent(
+        symbol
+      )}&metric=all&token=${token}`;
+      const metricsData = await fetchJSON<any>(metricsUrl, 3600);
+      // Try different P/E ratio fields from Finnhub
+      peRatio =
+        metricsData?.metric?.peBasicExclExtraTTM ||
+        metricsData?.metric?.peNormalizedAnnual ||
+        metricsData?.metric?.peTTM ||
+        undefined;
+    } catch (metricsError) {
+      console.error("Failed to fetch metrics for", symbol, metricsError);
+    }
+
+    // Format market cap properly
+    let marketCap: string | undefined = undefined;
+    if (marketCapRaw && typeof marketCapRaw === "number") {
+      if (marketCapRaw >= 1000000) {
+        marketCap = `$${(marketCapRaw / 1000).toFixed(2)}B`;
+      } else if (marketCapRaw >= 1000) {
+        marketCap = `$${marketCapRaw.toFixed(2)}M`;
+      } else {
+        marketCap = `$${marketCapRaw.toFixed(2)}M`;
+      }
+    }
+
+    return { marketCap, peRatio };
   } catch (e) {
     console.error("fetchMetricsForSymbol error", symbol, e);
     return { marketCap: undefined, peRatio: undefined };
@@ -204,9 +250,22 @@ export async function getWatchlistPage(
 
     const total = await Watchlist.countDocuments(query);
 
-    // sort parsing
+    // sort parsing - handle different field types
     const [sortField, sortDir] = sort.split(":");
-    const sortObj: any = { [sortField]: sortDir === "asc" ? 1 : -1 };
+    let sortObj: any = {};
+
+    // Map frontend sort fields to database fields where necessary
+    switch (sortField) {
+      case "currentPrice":
+      case "changePercent":
+      case "marketCap":
+      case "peRatio":
+        // These fields will be sorted after data enrichment since they come from API
+        sortObj = { addedAt: -1 }; // Default sort for now
+        break;
+      default:
+        sortObj = { [sortField]: sortDir === "asc" ? 1 : -1 };
+    }
 
     const docs = await Watchlist.find(query)
       .sort(sortObj)
@@ -222,7 +281,8 @@ export async function getWatchlistPage(
 
     const items: StockWithData[] = docs.map((d, idx) => {
       const q = quotes[idx];
-      const m = metrics[idx] as { marketCap?: number; peRatio?: number };
+      const m = metrics[idx] as { marketCap?: string; peRatio?: number };
+      console.log(m);
       return {
         userId: d.userId,
         symbol: d.symbol,
@@ -230,8 +290,8 @@ export async function getWatchlistPage(
         addedAt: d.addedAt,
         currentPrice: q.price,
         changePercent: q.changePercent,
-        marketCap: m.marketCap ? `$${m.marketCap.toFixed(2)}B` : undefined,
-        peRatio: m.peRatio ? m.peRatio.toString() : undefined,
+        marketCap: m.marketCap || undefined,
+        peRatio: m.peRatio ? m.peRatio.toFixed(2) : undefined,
         isFavorite: (d as any).isFavorite || false,
       } as StockWithData;
     });
@@ -242,6 +302,43 @@ export async function getWatchlistPage(
       filtered = items.filter((i) => (i.changePercent || 0) > 0);
     if (filter === "losers")
       filtered = items.filter((i) => (i.changePercent || 0) < 0);
+
+    // Apply sorting for API-derived fields
+    if (
+      ["currentPrice", "changePercent", "marketCap", "peRatio"].includes(
+        sortField
+      )
+    ) {
+      filtered.sort((a, b) => {
+        let aVal: number, bVal: number;
+
+        switch (sortField) {
+          case "currentPrice":
+            aVal = a.currentPrice || 0;
+            bVal = b.currentPrice || 0;
+            break;
+          case "changePercent":
+            aVal = a.changePercent || 0;
+            bVal = b.changePercent || 0;
+            break;
+          case "marketCap":
+            // Parse market cap string back to number for sorting
+            aVal = parseMarketCapToNumber(a.marketCap);
+            bVal = parseMarketCapToNumber(b.marketCap);
+            break;
+          case "peRatio":
+            aVal = parseFloat(a.peRatio || "0") || 0;
+            bVal = parseFloat(b.peRatio || "0") || 0;
+            break;
+          default:
+            aVal = 0;
+            bVal = 0;
+        }
+
+        const result = aVal - bVal;
+        return sortDir === "asc" ? result : -result;
+      });
+    }
 
     return { items: filtered, total, page, pageSize };
   } catch (e) {

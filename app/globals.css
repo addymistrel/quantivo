@@ -142,6 +142,46 @@
 }
 
 @layer utilities {
+  /* Custom palette utilities based on provided design reference */
+  .color-bg-offwhite {
+    background-color: #f0f3fa;
+  }
+  .color-blue-primary {
+    background-color: #0281fb;
+  }
+  .color-red-accent {
+    background-color: #e82127;
+  }
+  .color-red-alert {
+    background-color: #ff495b;
+  }
+  .color-deep-bg {
+    background-color: #141414;
+  }
+  .color-blue-alt {
+    background-color: #1ca7ed;
+  }
+  .color-green-accent {
+    background-color: #82ba22;
+  }
+  .color-orange-accent {
+    background-color: #f0502a;
+  }
+  .color-yellow-accent {
+    background-color: #fdb92c;
+  }
+  .text-green-accent {
+    color: #82ba22;
+  }
+  .text-red-alert {
+    color: #ff495b;
+  }
+  .text-blue-accent {
+    color: #1ca7ed;
+  }
+  .text-yellow-accent {
+    color: #fdb92c;
+  }
   .container {
     @apply mx-auto max-w-screen-2xl px-4 md:px-6 lg:px-8;
   }
@@ -314,7 +354,7 @@
     @apply border-b cursor-pointer text-gray-100 border-gray-600 hover:bg-gray-700/50 transition-colors;
   }
   .table-cell {
-    @apply font-medium text-base;
+    @apply font-medium text-base border border-gray-600;
   }
   .add-alert {
     @apply flex text-sm items-center whitespace-nowrap gap-1.5 px-3 w-fit py-2 text-yellow-600 border border-yellow-600/20 rounded font-medium bg-transparent hover:bg-transparent cursor-pointer transition-colors;

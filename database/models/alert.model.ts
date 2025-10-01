@@ -6,6 +6,8 @@ export interface AlertItem extends Document {
   company: string;
   alertType: "upper" | "lower";
   threshold: number; // price threshold
+  alertName?: string;
+  frequency?: string;
   createdAt: Date;
   isActive: boolean;
 }
@@ -17,6 +19,8 @@ const AlertSchema = new Schema<AlertItem>(
     company: { type: String, required: true, trim: true },
     alertType: { type: String, enum: ["upper", "lower"], required: true },
     threshold: { type: Number, required: true },
+    alertName: { type: String, trim: true },
+    frequency: { type: String, trim: true, default: "Once per day" },
     createdAt: { type: Date, default: Date.now },
     isActive: { type: Boolean, default: true },
   },
