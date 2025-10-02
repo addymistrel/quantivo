@@ -89,7 +89,7 @@ export default function SearchCommand({
           />
           {loading && <Loader2 className="search-loader" />}
         </div>
-        <CommandList className="search-list">
+        <CommandList className="search-list scrollbar-hide-default">
           {loading ? (
             <CommandEmpty className="search-list-empty">
               Loading stocks...

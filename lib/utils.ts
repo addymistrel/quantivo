@@ -98,13 +98,17 @@ export const formatArticle = (
 });
 
 export const formatChangePercent = (changePercent?: number) => {
-  if (!changePercent) return "";
-  const sign = changePercent > 0 ? "+" : "";
+  // Treat 0 as a valid value; only skip when null/undefined
+  if (changePercent == null || !Number.isFinite(changePercent)) return "";
+  const sign = changePercent > 0 ? "+" : ""; // Negative numbers already include '-'
   return `${sign}${changePercent.toFixed(2)}%`;
 };
 
 export const getChangeColorClass = (changePercent?: number) => {
-  if (!changePercent) return "text-gray-400";
+  // Show neutral/gray only when value missing; zero should not be treated as missing
+  if (changePercent == null || !Number.isFinite(changePercent))
+    return "text-gray-400";
+  if (changePercent === 0) return "text-gray-300"; // neutral color for no change
   return changePercent > 0 ? "text-green-500" : "text-red-500";
 };
 
@@ -137,3 +141,19 @@ export const getFormattedTodayDate = () =>
     day: "numeric",
     timeZone: "UTC",
   });
+
+export const formatTimestamp = (isoString: string): string => {
+  const date = new Date(isoString);
+
+  const dayName = date.toLocaleDateString("en-US", { weekday: "long" });
+  const time = date.toLocaleTimeString("en-US", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+  const formattedDate = date
+    .toLocaleDateString("en-GB") // dd/mm/yyyy
+    .replace(/-/g, "/");
+
+  return `${dayName}, ${time} on ${formattedDate}`;
+};

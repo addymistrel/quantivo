@@ -3,7 +3,10 @@
 import FooterLink from "@/components/forms/FooterLink";
 import InputField from "@/components/forms/InputField";
 import { Button } from "@/components/ui/button";
-import { signInWithEmail } from "@/lib/actions/auth.actions";
+import {
+  signInWithEmail,
+  getGoogleSignInUrl,
+} from "@/lib/actions/auth.actions";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
@@ -33,10 +36,28 @@ const SignIn = () => {
       if (result.success) {
         router.push("/");
       }
+      toast.error("Sign-In failed", {
+        description: "User does not exist",
+      });
     } catch (e) {
       console.error(e);
       toast.error("Sign-In failed", {
         description: e instanceof Error ? e.message : "Failed to sign in",
+      });
+    }
+  };
+  const handleGoogle = async () => {
+    try {
+      const res = await getGoogleSignInUrl();
+      if (res.success && res.url) {
+        window.location.href = res.url;
+      } else {
+        toast.error("Unable to start Google sign-in");
+      }
+    } catch (e) {
+      console.error(e);
+      toast.error("Google sign-in failed", {
+        description: e instanceof Error ? e.message : "Unexpected error",
       });
     }
   };
@@ -45,7 +66,23 @@ const SignIn = () => {
     <>
       <h1 className="form-title">Welcome Back</h1>
 
-      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+      {/* <div className="space-y-4">
+        <Button
+          type="button"
+          variant="outline"
+          className="w-full"
+          onClick={handleGoogle}
+        >
+          Continue with Google
+        </Button>
+        <div className="flex items-center gap-3 text-xs uppercase tracking-wide text-gray-500">
+          <span className="flex-1 h-px bg-gray-700" />
+          <span>or</span>
+          <span className="flex-1 h-px bg-gray-700" />
+        </div>
+      </div> */}
+
+      <form onSubmit={handleSubmit(onSubmit)} className="space-y-5 mt-5">
         <InputField
           name="email"
           label="Email"

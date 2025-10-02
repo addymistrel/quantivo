@@ -43,7 +43,6 @@ const Home = () => {
         </div>
         <div className="h-full md:col-span-1 xl:col-span-2">
           <TradingViewWidget
-            title="Market Quotes"
             scriptUrl={`${scriptUrl}market-quotes.js`}
             config={MARKET_DATA_WIDGET_CONFIG}
             height={600}

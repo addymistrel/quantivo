@@ -1,11 +1,8 @@
 "use client";
 
 import { CountrySelectField } from "@/components/forms/CountrySelectField";
-import FooterLink from "@/components/forms/FooterLink";
-import InputField from "@/components/forms/InputField";
 import SelectField from "@/components/forms/SelectField";
 import { Button } from "@/components/ui/button";
-import { signUpWithEmail } from "@/lib/actions/auth.actions";
 import {
   INVESTMENT_GOALS,
   PREFERRED_INDUSTRIES,
@@ -13,85 +10,77 @@ import {
 } from "@/lib/constants";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useForm } from "react-hook-form";
+import InputField from "@/components/forms/InputField";
 import { toast } from "sonner";
 
-const SignUp = () => {
+interface CompletionFormData {
+  fullName: string;
+  country: string;
+  investmentGoals: string;
+  riskTolerance: string;
+  preferredIndustry: string;
+}
+
+async function updateProfileOnServer(data: CompletionFormData) {
+  // Inline server call via fetch to new API route
+  const res = await fetch("/api/user/complete-profile", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  return res.json();
+}
+
+export default function CompleteProfilePage() {
   const router = useRouter();
   const params = useSearchParams();
-  const oauth = params.get("oauth");
-  const emailFromQuery = params.get("email") || "";
+  const missing = params.get("missing")?.split(",") || [];
+
   const {
     register,
     handleSubmit,
     control,
     formState: { errors, isSubmitting },
-  } = useForm<SignUpFormData>({
+  } = useForm<CompletionFormData>({
     defaultValues: {
       fullName: "",
-      email: emailFromQuery,
-      password: "",
       country: "IND",
       investmentGoals: "Growth",
       riskTolerance: "Medium",
       preferredIndustry: "Technology",
     },
-    mode: "onBlur",
   });
-  const onSubmit = async (data: SignUpFormData) => {
+
+  const onSubmit = async (data: CompletionFormData) => {
     try {
-      const result = await signUpWithEmail(data);
+      const result = await updateProfileOnServer(data);
       if (result.success) {
         router.push("/");
+      } else {
+        toast.error(result.error || "Failed to save profile");
       }
     } catch (e) {
       console.error(e);
-      toast.error("Sign-Up failed", {
-        description:
-          e instanceof Error ? e.message : "Failed to create an account",
-      });
+      toast.error("Unexpected error while saving profile");
     }
   };
 
   return (
-    <>
-      <h1 className="form-title">Sign Up & Personalize</h1>
-
+    <div className="max-w-xl mx-auto space-y-6">
+      <h1 className="form-title">Complete Your Profile</h1>
+      <p className="text-sm text-gray-500">
+        We need a few more details to personalize your experience.
+      </p>
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
         <InputField
           name="fullName"
           label="Full Name"
-          placeholder="John Doe"
+          placeholder="Jane Trader"
           register={register}
           error={errors.fullName}
           validation={{ required: "Full name is required", minLength: 2 }}
-          required={true}
+          required
         />
-        <InputField
-          name="email"
-          label="Email"
-          placeholder="johndoe@example.com"
-          register={register}
-          error={errors.email}
-          validation={{
-            required: "Email is required",
-            pattern: /^\w+@\w+\.\w+$/,
-            message: "Email address is required",
-          }}
-          required={true}
-          disabled={!!oauth && !!emailFromQuery}
-        />
-        {!oauth && (
-          <InputField
-            name="password"
-            label="Password"
-            placeholder="Enter a strong password"
-            register={register}
-            type="password"
-            error={errors.password}
-            validation={{ required: "Password is required", minLength: 8 }}
-            required={true}
-          />
-        )}
         <CountrySelectField
           name="country"
           label="Country"
@@ -126,29 +115,19 @@ const SignUp = () => {
           error={errors.preferredIndustry}
           required
         />
-
+        {missing.length > 0 && (
+          <p className="text-xs text-yellow-500">
+            Missing: {missing.join(", ")}
+          </p>
+        )}
         <Button
           type="submit"
           disabled={isSubmitting}
-          className="yellow-btn w-full mt-5"
+          className="yellow-btn w-full mt-2"
         >
-          {oauth
-            ? isSubmitting
-              ? "Linking Google..."
-              : "Finish Account Setup"
-            : isSubmitting
-            ? "Creating account..."
-            : "Start Your Investing Journey"}
+          {isSubmitting ? "Saving..." : "Finish"}
         </Button>
-
-        <FooterLink
-          text="Already have an account?"
-          linkText="Sign in"
-          href="/sign-in"
-        />
       </form>
-    </>
+    </div>
   );
-};
-
-export default SignUp;
+}

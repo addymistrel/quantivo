@@ -72,6 +72,7 @@ declare global {
     id: string;
     name: string;
     email: string;
+    profileImage?: string; // optional profile image (Google avatar or default)
   };
 
   type Stock = {

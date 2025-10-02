@@ -159,13 +159,6 @@ export default function EditAlertDialog({
           />
           <DialogFooter>
             <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-            >
-              Cancel
-            </Button>
-            <Button
               type="submit"
               className="yellow-btn w-full"
               disabled={isSubmitting}

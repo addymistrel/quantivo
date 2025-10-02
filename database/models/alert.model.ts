@@ -20,7 +20,9 @@ const AlertSchema = new Schema<AlertItem>(
     alertType: { type: String, enum: ["upper", "lower"], required: true },
     threshold: { type: Number, required: true },
     alertName: { type: String, trim: true },
-    frequency: { type: String, trim: true, default: "Once per day" },
+    // Stored as numeric string matching FREQUENCY_OPTIONS values: "1"|"2"|"3"
+    // Older records may still have full labels (e.g. "Once per day").
+    frequency: { type: String, trim: true, default: "3" },
     createdAt: { type: Date, default: Date.now },
     isActive: { type: Boolean, default: true },
   },

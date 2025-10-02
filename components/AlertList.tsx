@@ -44,8 +44,6 @@ export default function AlertList({ initial }: AlertListProps) {
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
 
-  console.log(alerts);
-
   const fetchAlerts = useCallback(async () => {
     setLoading(true);
     try {
