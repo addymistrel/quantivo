@@ -1,9 +1,11 @@
 "use client";
-import React, { useMemo, useState } from "react";
-
-// Minimal WatchlistButton implementation to satisfy page requirements.
-// This component focuses on UI contract only. It toggles local state and
-// calls onWatchlistChange if provided. Styling hooks match globals.css.
+import React, { useMemo, useState, useTransition, useEffect } from "react";
+import {
+  addToWatchlist,
+  removeFromWatchlist,
+} from "@/lib/actions/watchlist.actions";
+import { toast } from "sonner";
+import { useRouter } from "next/navigation";
 
 const WatchListButton = ({
   symbol,
@@ -14,6 +16,12 @@ const WatchListButton = ({
   onWatchlistChange,
 }: WatchlistButtonProps) => {
   const [added, setAdded] = useState<boolean>(!!isInWatchlist);
+  const [isPending, startTransition] = useTransition();
+
+  // Update local state when prop changes
+  useEffect(() => {
+    setAdded(!!isInWatchlist);
+  }, [isInWatchlist]);
 
   const label = useMemo(() => {
     if (type === "icon") return added ? "" : "";
@@ -22,8 +30,39 @@ const WatchListButton = ({
 
   const handleClick = () => {
     const next = !added;
+
+    // Optimistic update
     setAdded(next);
     onWatchlistChange?.(symbol, next);
+
+    startTransition(async () => {
+      try {
+        let result;
+        if (next) {
+          result = await addToWatchlist(symbol, company);
+          if (result.success) {
+            toast.success(`${symbol} added to watchlist`);
+          } else {
+            throw new Error(result.error || "Failed to add to watchlist");
+          }
+        } else {
+          result = await removeFromWatchlist(symbol);
+          if (result.success) {
+            toast.success(`${symbol} removed from watchlist`);
+          } else {
+            throw new Error(result.error || "Failed to remove from watchlist");
+          }
+        }
+      } catch (error) {
+        // Revert optimistic update on error
+        setAdded(!next);
+        onWatchlistChange?.(symbol, !next);
+        console.error("Watchlist operation failed:", error);
+        toast.error(
+          error instanceof Error ? error.message : "Operation failed"
+        );
+      }
+    });
   };
 
   if (type === "icon") {
@@ -39,8 +78,11 @@ const WatchListButton = ({
             ? `Remove ${symbol} from watchlist`
             : `Add ${symbol} to watchlist`
         }
-        className={`watchlist-icon-btn ${added ? "watchlist-icon-added" : ""}`}
+        className={`watchlist-icon-btn ${added ? "watchlist-icon-added" : ""} ${
+          isPending ? "opacity-50" : ""
+        }`}
         onClick={handleClick}
+        disabled={isPending}
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -62,8 +104,11 @@ const WatchListButton = ({
 
   return (
     <button
-      className={`watchlist-btn ${added ? "watchlist-remove" : ""}`}
+      className={`watchlist-btn ${added ? "watchlist-remove" : ""} ${
+        isPending ? "opacity-50" : ""
+      }`}
       onClick={handleClick}
+      disabled={isPending}
     >
       {showTrashIcon && added ? (
         <svg
