@@ -35,10 +35,11 @@ const SignIn = () => {
       const result = await signInWithEmail(data);
       if (result.success) {
         router.push("/");
+      } else {
+        toast.error("Sign-In failed", {
+          description: "User does not exist",
+        });
       }
-      toast.error("Sign-In failed", {
-        description: "User does not exist",
-      });
     } catch (e) {
       console.error(e);
       toast.error("Sign-In failed", {
