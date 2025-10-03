@@ -2,6 +2,7 @@ import WatchlistTable from "@/components/WatchlistTable";
 import { getWatchlistPage } from "@/lib/actions/watchlist.actions";
 import AlertList from "@/components/AlertList";
 import { listAlertsWithQuotes } from "@/lib/actions/alert.actions";
+import NewsList from "@/components/NewsList";
 
 export default async function Watchlist() {
   const initial = await getWatchlistPage({ page: 1, pageSize: 10 });
@@ -28,7 +29,7 @@ export default async function Watchlist() {
         }))
       : [];
   return (
-    <div className="flex min-h-screen p-4 md:p-6 lg:p-8">
+    <div className="flex flex-col gap-8 min-h-screen p-4 md:p-6 lg:p-8">
       <section className="flex flex-col xl:flex-row w-full home-section">
         <div className="xl:flex-2">
           <WatchlistTable initialData={initial} />
@@ -39,6 +40,12 @@ export default async function Watchlist() {
           </div>
           <AlertList initial={alertItems as any} />
         </div>
+      </section>
+      <section className="flex flex-col w-full">
+        <div className="flex items-center justify-between">
+          <h1 className="alert-title mb-6">News</h1>
+        </div>
+        <NewsList symbols={initial.items.map((i: any) => i.symbol)} />
       </section>
     </div>
   );

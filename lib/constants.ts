@@ -4,6 +4,11 @@ export const NAV_ITEMS = [
   { href: "/watchlist", label: "Watchlist" },
 ];
 
+// Default user profile image (used when signing up via email/password)
+// You can replace this path with a different asset (e.g. /assets/images/default-avatar.png)
+export const DEFAULT_PROFILE_IMAGE =
+  "https://aditya-portfolio-gold.vercel.app/assets/logo-5d95862e.svg";
+
 // Sign-up form select options
 export const INVESTMENT_GOALS = [
   { value: "Growth", label: "Growth" },

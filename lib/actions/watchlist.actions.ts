@@ -282,7 +282,6 @@ export async function getWatchlistPage(
     const items: StockWithData[] = docs.map((d, idx) => {
       const q = quotes[idx];
       const m = metrics[idx] as { marketCap?: string; peRatio?: number };
-      console.log(m);
       return {
         userId: d.userId,
         symbol: d.symbol,

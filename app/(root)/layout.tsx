@@ -11,6 +11,7 @@ const Layout = async ({ children }: { children: React.ReactNode }) => {
     id: session.user.id,
     name: session.user.name,
     email: session.user.email,
+    profileImage: (session.user as any).profileImage, // may be undefined if not set
   };
 
   return (

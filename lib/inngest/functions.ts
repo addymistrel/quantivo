@@ -3,11 +3,135 @@ import {
   NEWS_SUMMARY_EMAIL_PROMPT,
   PERSONALIZED_WELCOME_EMAIL_PROMPT,
 } from "@/lib/inngest/prompts";
-import { sendNewsSummaryEmail, sendWelcomeEmail } from "@/lib/nodemailer";
+import {
+  sendNewsSummaryEmail,
+  sendWelcomeEmail,
+  sendStockPriceAlertEmail,
+  sendInactiveUserReminderEmail,
+} from "@/lib/nodemailer";
 import { getAllUsersForNewsEmail } from "@/lib/actions/user.actions";
 import { getWatchlistSymbolsByEmail } from "@/lib/actions/watchlist.actions";
 import { getNews } from "@/lib/actions/finnhub.actions";
 import { getFormattedTodayDate } from "@/lib/utils";
+import { connectToDatabase } from "@/database/mongoose";
+import { Alert } from "@/database/models/alert.model";
+// (getAllUsersForNewsEmail already imported above) reuse for user basic data
+
+// Frequency mapping helper
+const FREQUENCY_CRONS: Record<string, string> = {
+  "1": "* * * * *", // every minute
+  "2": "0 * * * *", // every hour
+  "3": "0 12 * * *", // daily at 12:00 UTC (reused for simplicity)
+};
+
+// Utility: fetch current quote for a symbol
+async function fetchQuote(symbol: string): Promise<number | null> {
+  try {
+    const token =
+      process.env.FINNHUB_API_KEY || process.env.NEXT_PUBLIC_FINNHUB_API_KEY;
+    if (!token) return null;
+    const res = await fetch(
+      `https://finnhub.io/api/v1/quote?symbol=${encodeURIComponent(
+        symbol
+      )}&token=${token}`,
+      { cache: "no-store" }
+    );
+    if (!res.ok) return null;
+    const data = await res.json();
+    return typeof data.c === "number" ? data.c : null;
+  } catch (e) {
+    console.error("fetchQuote error", symbol, e);
+    return null;
+  }
+}
+
+// Generic processor for a given frequency value ("1"|"2"|"3")
+async function processAlertsByFrequency(frequencyValue: string, step: any) {
+  await connectToDatabase();
+
+  // Support legacy label storage (e.g., "Once per day")
+  const legacyMap: Record<string, string[]> = {
+    "1": ["1", "Once per minute"],
+    "2": ["2", "Once per hour"],
+    "3": ["3", "Once per day"],
+  };
+
+  const alerts = await Alert.find({
+    isActive: true,
+    frequency: { $in: legacyMap[frequencyValue] || [frequencyValue] },
+  }).lean();
+
+  if (!alerts.length) {
+    return { processed: 0, sent: 0 };
+  }
+
+  // Group by symbol to minimize quote API calls
+  const symbols = Array.from(new Set(alerts.map((a: any) => a.symbol)));
+  const quoteMap: Record<string, number | null> = {};
+
+  await Promise.all(
+    symbols.map(async (s) => {
+      quoteMap[s] = await fetchQuote(s);
+    })
+  );
+
+  // Get user data (email, name) in bulk
+  const mongoose = await connectToDatabase();
+  const db = mongoose.connection.db;
+  const userIds = Array.from(new Set(alerts.map((a: any) => a.userId)));
+
+  const usersRaw = db
+    ? await db
+        .collection("user")
+        .find(
+          {
+            _id: { $in: userIds.map((id) => new mongoose.mongo.ObjectId(id)) },
+          },
+          { projection: { _id: 1, email: 1, name: 1 } }
+        )
+        .toArray()
+    : [];
+
+  const userMap: Record<string, { email: string; name: string }> = {};
+  for (const u of usersRaw) {
+    if (u.email) {
+      userMap[u._id.toString()] = { email: u.email, name: u.name || "Trader" };
+    }
+  }
+
+  let sent = 0;
+  for (const alert of alerts as any[]) {
+    const quote = quoteMap[alert.symbol];
+    if (quote == null) continue;
+
+    const user = userMap[alert.userId?.toString()];
+    if (!user) continue;
+
+    const shouldTrigger =
+      alert.alertType === "upper"
+        ? quote >= alert.threshold
+        : quote <= alert.threshold;
+
+    if (!shouldTrigger) continue;
+
+    try {
+      await sendStockPriceAlertEmail({
+        email: user.email,
+        symbol: alert.symbol,
+        company: alert.company,
+        currentPrice: quote,
+        targetPrice: alert.threshold,
+        alertType: alert.alertType,
+        timestamp: new Date().toISOString(),
+      });
+      sent++;
+    } catch (e) {
+      console.error("Failed sending price alert", alert._id, e);
+    }
+  }
+
+  return { processed: alerts.length, sent };
+}
 
 // Helper function to mask email addresses for logging
 const maskEmail = (email: string): string => {
@@ -169,5 +293,90 @@ export const sendDailyNewsSummary = inngest.createFunction(
       success: true,
       message: "Daily news summary emails sent successfully",
     };
+  }
+);
+
+// Create 3 scheduled functions for each frequency
+export const processMinuteAlerts = inngest.createFunction(
+  { id: "process-minute-alerts" },
+  { cron: FREQUENCY_CRONS["1"] },
+  async ({ step }) => {
+    const result = await step.run("process-minute", () =>
+      processAlertsByFrequency("1", step)
+    );
+    return { success: true, ...result };
+  }
+);
+
+export const processHourlyAlerts = inngest.createFunction(
+  { id: "process-hourly-alerts" },
+  { cron: FREQUENCY_CRONS["2"] },
+  async ({ step }) => {
+    const result = await step.run("process-hourly", () =>
+      processAlertsByFrequency("2", step)
+    );
+    return { success: true, ...result };
+  }
+);
+
+export const processDailyAlerts = inngest.createFunction(
+  { id: "process-daily-alerts" },
+  { cron: FREQUENCY_CRONS["3"] },
+  async ({ step }) => {
+    const result = await step.run("process-daily", () =>
+      processAlertsByFrequency("3", step)
+    );
+    return { success: true, ...result };
+  }
+);
+
+// Inactive user monthly reminder (runs first day of month at 13:00 UTC)
+export const sendInactiveUserReminders = inngest.createFunction(
+  { id: "inactive-user-reminders" },
+  { cron: "0 13 1 * *" },
+  async ({ step }) => {
+    // Users with lastLoginAt older than 30 days
+    const THIRTY_DAYS_MS = 1000 * 60 * 60 * 24 * 30;
+    const cutoff = Date.now() - THIRTY_DAYS_MS;
+
+    const mongoose = await connectToDatabase();
+    const db = mongoose.connection.db;
+    const users = db
+      ? await db
+          .collection("user")
+          .find(
+            {
+              lastLoginAt: { $exists: true, $lt: new Date(cutoff) },
+              email: { $exists: true, $ne: null },
+            },
+            { projection: { id: 1, email: 1, name: 1 } }
+          )
+          .toArray()
+      : [];
+
+    if (!users.length) return { success: true, sent: 0 };
+
+    let sent = 0;
+    await Promise.all(
+      users.map(async (u: any) => {
+        try {
+          await sendInactiveUserReminderEmail({
+            email: u.email,
+            name: u.name || "Trader",
+            dashboardUrl:
+              process.env.APP_BASE_URL ||
+              "https://stock-market-dev.vercel.app/",
+            unsubscribeUrl: `${
+              process.env.APP_BASE_URL || "https://stock-market-dev.vercel.app"
+            }/unsubscribe`,
+          });
+          sent++;
+        } catch (e) {
+          console.error("inactive reminder failed", u.id, e);
+        }
+      })
+    );
+
+    return { success: true, sent, totalCandidates: users.length };
   }
 );

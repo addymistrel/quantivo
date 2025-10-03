@@ -117,7 +117,6 @@ const AddAlertDialog = ({
   };
 
   const onInvalid = (invalid: any) => {
-    console.log("VALIDATION ERRORS:", invalid);
     toast.error("Create Alert Failed", {
       description:
         invalid instanceof Error
@@ -212,15 +211,6 @@ const AddAlertDialog = ({
           />
 
           <DialogFooter className="w-full">
-            <DialogClose asChild>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleOpenChange(false)}
-              >
-                Cancel
-              </Button>
-            </DialogClose>
             <Button
               type="submit"
               className="yellow-btn w-full"
