@@ -37,7 +37,7 @@ const SignIn = () => {
         router.push("/");
       } else {
         toast.error("Sign-In failed", {
-          description: "User does not exist",
+          description: "Invalid credentials or User does not exist",
         });
       }
     } catch (e) {
