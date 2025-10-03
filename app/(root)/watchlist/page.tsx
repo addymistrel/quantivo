@@ -1,3 +1,5 @@
+"use client";
+
 import WatchlistTable from "@/components/WatchlistTable";
 import { getWatchlistPage } from "@/lib/actions/watchlist.actions";
 import AlertList from "@/components/AlertList";
