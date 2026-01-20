@@ -51,7 +51,7 @@ export default function NavigationProgress() {
     const handleClick = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
       const anchor = target.closest("a");
-      
+
       if (
         anchor &&
         anchor.href &&
@@ -64,7 +64,10 @@ export default function NavigationProgress() {
       ) {
         const url = new URL(anchor.href);
         // Only start loading for different pages
-        if (url.pathname !== pathname || url.search !== window.location.search) {
+        if (
+          url.pathname !== pathname ||
+          url.search !== window.location.search
+        ) {
           startLoading();
         }
       }
@@ -92,7 +95,8 @@ export default function NavigationProgress() {
         className="h-full transition-all duration-200 ease-out"
         style={{
           width: `${progress}%`,
-          background: "linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd, #60a5fa, #3b82f6)",
+          background:
+            "linear-gradient(90deg, #3b82f6, #60a5fa, #93c5fd, #60a5fa, #3b82f6)",
           backgroundSize: "200% 100%",
           animation: "shimmer 1.5s infinite linear",
           boxShadow: "0 0 10px #3b82f6, 0 0 20px #60a5fa, 0 0 30px #3b82f6",
