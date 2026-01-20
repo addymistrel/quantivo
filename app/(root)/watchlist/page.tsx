@@ -4,6 +4,8 @@ import AlertList from "@/components/AlertList";
 import { listAlertsWithQuotes } from "@/lib/actions/alert.actions";
 import NewsList from "@/components/NewsList";
 
+export const dynamic = "force-dynamic";
+
 export default async function Watchlist() {
   const initial = await getWatchlistPage({ page: 1, pageSize: 10 });
   const alertRes = await listAlertsWithQuotes({ page: 1, pageSize: 50 });
